@@ -8,8 +8,8 @@ const TEST_CONFIG = {
     totalBytes: 30 * 1024 * 1024, // 30 MB for mobile friendliness
     parallel: 3,
     endpoints: [
-      (n: number) => `https://speed.cloudflare.com/__down?bytes=${n}`,
-      (n: number) => `https://httpbin.org/bytes/${n}`,
+      (n) => `https://speed.cloudflare.com/__down?bytes=${n}`,
+      (n) => `https://httpbin.org/bytes/${n}`,
     ],
   },
   upload: {
