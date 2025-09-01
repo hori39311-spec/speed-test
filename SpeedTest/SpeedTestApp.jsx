@@ -5,7 +5,7 @@ const TEST_CONFIG = {
   latencySamples: 6,
   latencyEndpoint: "https://httpbin.org/get",
   download: {
-    totalBytes: 30 * 1024 * 1024, // 30 MB for mobile friendliness
+    totalBytes: 30 * 1024 * 1024,
     parallel: 3,
     endpoints: [
       (n) => `https://speed.cloudflare.com/__down?bytes=${n}`,
@@ -21,7 +21,6 @@ const TEST_CONFIG = {
 const fmtMbps = (bps) => (bps / 1_000_000).toFixed(2);
 const fmtMs = (ms) => Math.max(0, ms).toFixed(0);
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
-
 function safeRandomBytes(n) {
   const buf = new Uint8Array(n);
   const chunk = 65536;
@@ -39,9 +38,7 @@ function SparkleDivider() {
         <div className="w-full border-t border-gray-200" />
       </div>
       <div className="relative flex justify-center">
-        <span className="bg-white px-3 text-sm uppercase tracking-wider text-gray-500">
-          Results
-        </span>
+        <span className="bg-white px-3 text-sm uppercase tracking-wider text-gray-500">Results</span>
       </div>
     </div>
   );
@@ -86,16 +83,12 @@ export default function SpeedTestApp() {
     setRunning(false);
   }, []);
 
-  // ---------------- Core Tests ----------------
   const measureLatency = useCallback(async () => {
     const samples = [];
     for (let i = 0; i < TEST_CONFIG.latencySamples; i++) {
       const start = performance.now();
       try {
-        const r = await fetch(TEST_CONFIG.latencyEndpoint, {
-          cache: "no-store",
-          mode: "cors",
-        });
+        const r = await fetch(TEST_CONFIG.latencyEndpoint, { cache: "no-store", mode: "cors" });
         if (!r.ok) throw new Error("Latency probe failed");
       } catch {}
       const dt = performance.now() - start;
@@ -165,12 +158,7 @@ export default function SpeedTestApp() {
     const payload = new Blob([safeRandomBytes(totalBytes)]);
     const start = performance.now();
     try {
-      const res = await fetch(TEST_CONFIG.upload.endpoint, {
-        method: "POST",
-        body: payload,
-        mode: "cors",
-        signal: controller.signal,
-      });
+      const res = await fetch(TEST_CONFIG.upload.endpoint, { method: "POST", body: payload, mode: "cors", signal: controller.signal });
       if (!res.ok) throw new Error("upload failed");
     } catch (e) {
       if (controller.signal.aborted) throw e;
@@ -186,16 +174,12 @@ export default function SpeedTestApp() {
       setError(null);
       setRunning(true);
       setProgress(0);
-
       setPhase("latency");
       await measureLatency();
-
       setPhase("download");
       await measureDownload();
-
       setPhase("upload");
       await measureUpload();
-
       setPhase("done");
       setRunning(false);
     } catch (e) {
@@ -215,9 +199,7 @@ export default function SpeedTestApp() {
   }, [downloadMbps, uploadMbps, latencyMs, jitterMs]);
 
   async function copyShare() {
-    try {
-      await navigator.clipboard.writeText(shareText || "Speed test results");
-    } catch {}
+    try { await navigator.clipboard.writeText(shareText || "Speed test results"); } catch {}
   }
 
   const meterColor = (value) => {
@@ -230,7 +212,98 @@ export default function SpeedTestApp() {
 
   return (
     <div className="min-h-screen w-full bg-white text-gray-900">
-      {/* a teljes JSX, amit korábban küldtél */}
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <header className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Internet Speed Test</h1>
+            <p className="text-sm text-gray-600">Fast, browser-based speed test — no installation.</p>
+          </div>
+          <button onClick={resetAll} className="rounded-2xl border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50" title="Reset">Reset</button>
+        </header>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-gray-200 p-4 shadow-sm">
+            <div className="mb-2 text-xs uppercase tracking-wider text-gray-500">Download</div>
+            <div className="flex items-end gap-2">
+              <div className="text-4xl font-semibold">{downloadMbps == null ? "—" : fmtMbps(downloadMbps)}</div>
+              <div className="pb-1 text-sm text-gray-500">Mbps</div>
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+              <div className={`h-2 ${meterColor(downloadMbps)}`} style={{ width: downloadMbps == null ? "0%" : `${Math.min(100, (downloadMbps / 500) * 100)}%` }} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 p-4 shadow-sm">
+            <div className="mb-2 text-xs uppercase tracking-wider text-gray-500">Upload</div>
+            <div className="flex items-end gap-2">
+              <div className="text-4xl font-semibold">{uploadMbps == null ? "—" : fmtMbps(uploadMbps)}</div>
+              <div className="pb-1 text-sm text-gray-500">Mbps</div>
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+              <div className={`h-2 ${meterColor(uploadMbps)}`} style={{ width: uploadMbps == null ? "0%" : `${Math.min(100, (uploadMbps / 200) * 100)}%` }} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 p-4 shadow-sm">
+            <div className="mb-2 text-xs uppercase tracking-wider text-gray-500">Latency</div>
+            <div className="flex items-end gap-2">
+              <div className="text-4xl font-semibold">{latencyMs == null ? "—" : fmtMs(latencyMs)}</div>
+              <div className="pb-1 text-sm text-gray-500">ms</div>
+            </div>
+            <div className="mt-2 text-sm text-gray-600">Jitter: {jitterMs == null ? "—" : `${fmtMs(jitterMs)} ms`}</div>
+          </div>
+        </div>
+
+        <div className="my-4 block sm:hidden"><AdSlot /></div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {!running ? (
+            <button onClick={startTest} className="inline-flex items-center justify-center rounded-2xl bg-black px-6 py-3 text-white shadow-lg transition hover:opacity-90 disabled:opacity-60">
+              {phase === "done" ? "Test Again" : "Start Test"}
+            </button>
+          ) : (
+            <button onClick={stop} disabled={!canStop} className="inline-flex items-center justify-center rounded-2xl bg-gray-800 px-6 py-3 text-white shadow-lg transition hover:opacity-90 disabled:opacity-60">
+              Stop
+            </button>
+          )}
+
+          <div className="flex-1">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+              <div className="h-2 bg-blue-500 transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              Status: {phase === "idle" && "idle"}
+              {phase === "latency" && "measuring latency"}
+              {phase === "download" && "measuring download"}
+              {phase === "upload" && "measuring upload"}
+              {phase === "done" && "done"}
+              {phase === "error" && `error: ${error}`}
+            </div>
+          </div>
+
+          <button onClick={copyShare} className="rounded-2xl border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Copy Result</button>
+        </div>
+
+        <SparkleDivider />
+
+        <section className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-gray-200 p-4">
+            <h3 className="mb-2 text-base font-semibold">Tips for accurate results</h3>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-gray-700">
+              <li>Close downloads/streams running in the background.</li>
+              <li>Try with a wired connection instead of Wi‑Fi.</li>
+              <li>Run multiple tests and take the average.</li>
+              <li>Use nearby endpoints for better ping.</li>
+            </ul>
+          </div>
+
+          <div className="hidden rounded-2xl border border-gray-200 p-4 sm:block"><AdSlot /></div>
+        </section>
+
+        <footer className="mt-8 text-center text-xs text-gray-500">
+          Made with ❤️ — no trackers, no cookies.
+        </footer>
+      </div>
     </div>
   );
 }
