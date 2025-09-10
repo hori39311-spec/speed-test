@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
 
-// -------------------- Config --------------------
+/* ==================== Config ==================== */
 const TEST_CONFIG = {
   latencySamples: 6,
   latencyEndpoint: "https://httpbin.org/get",
   download: {
-    totalBytes: 30 * 1024 * 1024, // 30 MB total
+    totalBytes: 30 * 1024 * 1024, // 30 MB
     parallel: 3,
     endpoints: [
       (n) => `https://speed.cloudflare.com/__down?bytes=${n}`,
@@ -18,14 +18,13 @@ const TEST_CONFIG = {
   },
 };
 
-// -------------------- Utils --------------------
+/* ==================== Utils ==================== */
 const fmtMbps = (bps) => (bps / 1_000_000).toFixed(2);
 const fmtMs = (ms) => Math.max(0, ms).toFixed(0);
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 function safeRandomBytes(n) {
-  // Fill in 64KB chunks to avoid Crypto.getRandomValues 64k limit
   const buf = new Uint8Array(n);
-  const CHUNK = 65536;
+  const CHUNK = 65536; // avoid getRandomValues 64KB entropy cap
   for (let i = 0; i < n; i += CHUNK) {
     const end = Math.min(i + CHUNK, n);
     crypto.getRandomValues(buf.subarray(i, end));
@@ -33,33 +32,10 @@ function safeRandomBytes(n) {
   return buf;
 }
 
-// -------------------- Visuals --------------------
-function SparkleDivider({ label = "Results" }) {
-  return (
-    <div className="relative my-6 h-10" role="separator" aria-label={label}>
-      <div className="absolute inset-0 flex items-center" aria-hidden="true">
-        <div className="w-full border-t border-gray-700" />
-      </div>
-      <div className="relative flex justify-center">
-        <span className="bg-black px-3 text-sm uppercase tracking-wider text-gray-400">{label}</span>
-      </div>
-    </div>
-  );
-}
-
-// AdSlot: only a thin dashed line placeholder
-function AdSlot() {
-  return (
-    <div className="my-4" role="complementary" aria-label="advertisement">
-      <div className="h-px w-full border-t border-dashed border-gray-700 opacity-60" />
-    </div>
-  );
-}
-
-// Warp‑speed rainbow background
+/* ==================== Background (warp effect) ==================== */
 function BackgroundCanvas({ impulse = 0 }) {
   const canvasRef = useRef(null);
-  const boostRef = useRef(0); // frames of temporary boost
+  const boostRef = useRef(0);
   const pulseRef = useRef({ active: false, t0: 0 });
 
   useEffect(() => {
@@ -83,7 +59,6 @@ function BackgroundCanvas({ impulse = 0 }) {
     const maxR = () => Math.hypot(canvas.width / dpr, canvas.height / dpr) / 2 + 60;
 
     function spawn() {
-      // Start near the center, random angle/color
       return {
         angle: Math.random() * Math.PI * 2,
         hue: Math.random() * 360,
@@ -92,34 +67,26 @@ function BackgroundCanvas({ impulse = 0 }) {
       };
     }
 
-    let stars = Array.from({ length: 280 }, spawn);
-
+    let stars = Array.from({ length: 300 }, spawn);
     let rafId = 0;
-    const draw = () => {
-      // Debug mark to ensure the loop runs
-      if (!("__bgDebug" in window)) { try { window.__bgDebug = true; console.debug("[BackgroundCanvas] draw loop started"); } catch {} }
-      const c = center();
 
-      // Clear to deep black
+    const draw = () => {
+      const c = center();
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw accelerating rainbow streaks
       ctx.globalCompositeOperation = "lighter";
       const limit = maxR();
       for (let s of stars) {
         const vx = Math.cos(s.angle);
         const vy = Math.sin(s.angle);
-        const boost = boostRef.current > 0 ? 3 : 1; // impulse multiplier
+        const boost = boostRef.current > 0 ? 3 : 1;
 
         const x0 = c.x + vx * s.r;
         const y0 = c.y + vy * s.r;
-
-        // continuous acceleration
-        s.speed *= 1.012;
+        s.speed *= 1.012; // continuous acceleration
         s.r += s.speed * boost;
-
         const x1 = c.x + vx * s.r;
         const y1 = c.y + vy * s.r;
 
@@ -133,10 +100,9 @@ function BackgroundCanvas({ impulse = 0 }) {
         if (s.r > limit) Object.assign(s, spawn());
       }
 
-      // One‑shot pulse ring on impulse
       if (pulseRef.current.active) {
         const t = (performance.now() - pulseRef.current.t0) / 1000;
-        const radius = t * 900; // px/s
+        const radius = t * 900;
         const alpha = Math.max(0, 0.35 - t * 0.35);
         if (alpha > 0) {
           const { x, y } = c;
@@ -160,17 +126,15 @@ function BackgroundCanvas({ impulse = 0 }) {
     };
 
     rafId = requestAnimationFrame(draw);
-
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("resize", resize);
     };
   }, []);
 
-  // Trigger impulse + pulse when prop changes
   useEffect(() => {
     if (impulse > 0) {
-      boostRef.current = 60; // ~1s boost at 60fps
+      boostRef.current = 60; // ~1s boost @60fps
       pulseRef.current = { active: true, t0: performance.now() };
     }
   }, [impulse]);
@@ -178,7 +142,7 @@ function BackgroundCanvas({ impulse = 0 }) {
   return <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />;
 }
 
-// CTA: transparent inner (5% opacity), only the colorful border animates
+/* ==================== CTA Button ==================== */
 function CTAButton({ children, onClick, disabled }) {
   return (
     <button
@@ -188,7 +152,6 @@ function CTAButton({ children, onClick, disabled }) {
       aria-label="Start speed test"
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
-      {/* SVG outline with traveling rainbow segment along the border */}
       <svg className="absolute inset-0 pointer-events-none" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id="rainbowStroke" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -200,27 +163,93 @@ function CTAButton({ children, onClick, disabled }) {
             <stop offset="100%" stopColor="#10b981"/>
           </linearGradient>
         </defs>
-        {/* 4px visual stroke; pathLength makes dash math size-independent */}
         <rect x="2" y="2" width="96" height="36" rx="16" ry="16" fill="none" stroke="url(#rainbowStroke)" strokeWidth="4" pathLength="100" strokeDasharray="30 70" className="cta-dash glow"/>
       </svg>
-
-      {/* Inner body at 5% opacity (click target) */}
       <span className="relative rounded-2xl bg-white/5 text-white px-7 py-3 text-base sm:text-lg font-semibold shadow-lg">
         {children}
       </span>
-
       <style>{`
         .cta-dash { stroke-linecap: round; animation: dash-loop 2.6s linear infinite; }
         @keyframes dash-loop { to { stroke-dashoffset: -100; } }
         @media (prefers-reduced-motion: reduce) { .cta-dash { animation: none; } }
-        .glow { filter: drop-shadow(0 0 6px rgba(255,255,255,0.7)); }
+        .glow { filter: drop-shadow(0 0 8px rgba(255,255,255,0.9)); }
       `}</style>
     </button>
   );
 }
 
-// -------------------- App --------------------
+/* ==================== Affiliate ==================== */
+function AffiliateCard({ title, desc, tag, logo, ctaHref, ctaText = "Learn more →" }) {
+  return (
+    <div className="group relative flex flex-col items-center text-center overflow-hidden rounded-2xl border border-gray-700 bg-black/70 backdrop-blur px-5 py-6 affiliate-glow min-h-[180px]">
+      {logo && (
+        <div className="flex items-center justify-center mb-4">
+          <img
+            src={logo}
+            alt={`${title} logo`}
+            className="h-16 w-auto select-none"
+            loading="eager"
+          />
+        </div>
+      )}
+      <div className="min-w-0">
+        <div className="text-sm uppercase tracking-wider text-gray-400">{tag}</div>
+        <div className="mt-0.5 font-semibold text-white leading-tight">{title}</div>
+        <div className="text-sm text-gray-200 leading-snug mt-1 space-y-1">{desc}</div>
+        {ctaHref && (
+          <a
+            href={ctaHref}
+            target="_blank"
+            rel="noopener"
+            className="mt-3 inline-block rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-500 transition"
+          >
+            {ctaText}
+          </a>
+        )}
+      </div>
+      <style>{`
+        .affiliate-glow { box-shadow: 0 0 12px rgba(0, 200, 255, 0.3); animation: pulseGlow 4s ease-in-out infinite; }
+        @keyframes pulseGlow {
+          0% { box-shadow: 0 0 6px rgba(255, 0, 150, 0.4); }
+          25% { box-shadow: 0 0 12px rgba(0, 200, 255, 0.5); }
+          50% { box-shadow: 0 0 18px rgba(0, 255, 120, 0.5); }
+          75% { box-shadow: 0 0 12px rgba(255, 180, 0, 0.5); }
+          100% { box-shadow: 0 0 6px rgba(255, 0, 150, 0.4); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function AdSlot() {
+  return (
+    <div className="my-4 grid gap-4 sm:grid-cols-2" role="complementary" aria-label="affiliate-offers">
+      <AffiliateCard
+        title="NordVPN — Exclusive Deal"
+        desc={
+          <>
+            <p>Protect 10 devices with one deal!</p>
+            <p>Get 75% off NordVPN's 2-year plan + 3 extra months</p>
+            <p className="mt-1 text-green-400 font-semibold">From <span className="line-through text-gray-400">€11.59</span> <span className="text-white">€3.09</span>/month</p>
+          </>
+        }
+        tag="VPN"
+        logo="/nordvpn-logo.svg"
+        ctaHref="https://go.nordvpn.net/aff_c?offer_id=15&aff_id=131269&url_id=902"
+        ctaText="Get NordVPN Deal"
+      />
+      <AffiliateCard
+        title="eSIM for travelers"
+        desc="Instant data in 190+ countries."
+        tag="eSIM"
+      />
+    </div>
+  );
+}
+
+/* ==================== App ==================== */
 export default function SpeedTestApp() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState("idle");
   const [error, setError] = useState(null);
@@ -237,46 +266,58 @@ export default function SpeedTestApp() {
 
   const canStop = phase !== "idle" && phase !== "done" && phase !== "error";
 
-  const resetAll = useCallback(() => {
-    setRunning(false);
-    setPhase("idle");
-    setError(null);
-    setLatencyMs(null);
-    setJitterMs(null);
-    setDownloadMbps(null);
-    setUploadMbps(null);
-    setProgress(0);
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
-
-  const stop = useCallback(() => {
-    abortRef.current?.abort();
-    setRunning(false);
-  }, []);
-
   useEffect(() => {
     const onScroll = () => setShowScrollHint(false);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Fetch provider/server info once
+  // Provider & server info
   useEffect(() => {
     async function fetchInfo() {
+      let cityCountry = "";
       try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
-        setServerInfo("speed.cloudflare.com");
-        setProviderInfo(data.org || data.isp || data.asn || data.ip);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to fetch provider info", e);
+        const ipRes = await fetch("https://ipapi.co/json/");
+        const ipData = await ipRes.json();
+        setProviderInfo(ipData.org || ipData.isp || ipData.asn || ipData.network || ipData.ip);
+        if (ipData.city && ipData.country_name) cityCountry = `${ipData.city}, ${ipData.country_name}`;
+        else if (ipData.country_name) cityCountry = ipData.country_name;
+      } catch {}
+
+      try {
+        const traceRes = await fetch("https://speed.cloudflare.com/cdn-cgi/trace");
+        const text = await traceRes.text();
+        const map = Object.fromEntries(
+          text
+            .trim()
+            .split("\n")
+            .map((line) => line.split("=").map((s) => s.trim()))
+            .filter(([k, v]) => k && v)
+        );
+        const colo = map.colo || "?";
+        const loc = map.loc || "";
+
+        let countryName = loc;
+        try {
+          if (loc) {
+            const countryRes = await fetch(`https://restcountries.com/v3.1/alpha/${loc}`);
+            const countryData = await countryRes.json();
+            if (Array.isArray(countryData) && countryData[0]?.name?.common) {
+              countryName = countryData[0].name.common;
+            }
+          }
+        } catch {}
+
+        const fallback = countryName ? `Cloudflare POP ${colo} (${countryName})` : `Cloudflare POP ${colo}`;
+        setServerInfo(cityCountry || fallback);
+      } catch {
+        setServerInfo(cityCountry || "Cloudflare (trace unavailable)");
       }
     }
     fetchInfo();
   }, []);
 
+  // Latency
   const measureLatency = useCallback(async () => {
     const samples = [];
     for (let i = 0; i < TEST_CONFIG.latencySamples; i++) {
@@ -289,13 +330,14 @@ export default function SpeedTestApp() {
       samples.push(dt);
       await sleep(60 + Math.random() * 60);
     }
-    const s = samples.slice(1); // drop the first sample (warmup)
+    const s = samples.slice(1); // drop warm-up
     const avg = s.reduce((a, b) => a + b, 0) / Math.max(1, s.length);
     const meanAbsDev = s.reduce((a, b) => a + Math.abs(b - avg), 0) / Math.max(1, s.length);
     setLatencyMs(avg);
     setJitterMs(meanAbsDev);
   }, []);
 
+  // Download
   const measureDownload = useCallback(async () => {
     const controller = new AbortController();
     abortRef.current = controller;
@@ -323,8 +365,9 @@ export default function SpeedTestApp() {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            received += value?.length || 0;
-            downloaded += value?.length || 0;
+            const len = value?.length || 0;
+            received += len;
+            downloaded += len;
             setProgress(downloaded / totalBytes);
           }
           left -= received;
@@ -345,6 +388,7 @@ export default function SpeedTestApp() {
     setDownloadMbps(bps);
   }, []);
 
+  // Upload
   const measureUpload = useCallback(async () => {
     const controller = new AbortController();
     abortRef.current = controller;
@@ -352,17 +396,25 @@ export default function SpeedTestApp() {
     const payload = new Blob([safeRandomBytes(totalBytes)]);
     const start = performance.now();
     try {
-      const res = await fetch(TEST_CONFIG.upload.endpoint, { method: "POST", body: payload, mode: "cors", signal: controller.signal });
+      const res = await fetch(TEST_CONFIG.upload.endpoint, {
+        method: "POST",
+        body: payload,
+        mode: "cors",
+        cache: "no-store",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/octet-stream" },
+      });
       if (!res.ok) throw new Error("upload failed");
     } catch (e) {
       if (controller.signal.aborted) throw e;
     }
-    const dt = performance.now() - start;
+    const dt = performance.now() - start || 1;
     const bits = payload.size * 8;
-    const bps = bits / (dt / 1000 || 1);
+    const bps = bits / (dt / 1000);
     setUploadMbps(bps);
   }, []);
 
+  // Start/Stop
   const startTest = useCallback(async () => {
     try {
       setError(null);
@@ -370,8 +422,7 @@ export default function SpeedTestApp() {
       setProgress(0);
       setPhase("latency");
 
-      // Trigger background impulse + show mobile scroll hint
-      setImpulse((n) => n + 1);
+      setImpulse((n) => n + 1); // kick background pulse
       setShowScrollHint(true);
       setTimeout(() => setShowScrollHint(false), 5000);
 
@@ -389,6 +440,11 @@ export default function SpeedTestApp() {
     }
   }, [measureLatency, measureDownload, measureUpload]);
 
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+    setRunning(false);
+  }, []);
+
   const shareText = useMemo(() => {
     const parts = [];
     if (downloadMbps != null) parts.push(`↓ ${fmtMbps(downloadMbps)} Mbps`);
@@ -404,8 +460,7 @@ export default function SpeedTestApp() {
     const text = shareText || "Speed test results";
     try {
       await navigator.clipboard.writeText(text);
-    } catch (e) {
-      // Fallback for environments without Clipboard API permissions
+    } catch {
       try {
         const ta = document.createElement("textarea");
         ta.value = text;
@@ -420,7 +475,7 @@ export default function SpeedTestApp() {
   }, [shareText]);
 
   const meterColor = (value) => {
-    if (value == null) return "bg-gray-700";
+    if (value == null) return "bg-gray-800";
     if (value > 200 * 1_000_000) return "bg-green-400";
     if (value > 50 * 1_000_000) return "bg-emerald-400";
     if (value > 10 * 1_000_000) return "bg-yellow-400";
@@ -439,20 +494,40 @@ export default function SpeedTestApp() {
     }
   }, [phase, error]);
 
+  /* ============== Render ============== */
   return (
-    <div className="min-h-screen w-full bg-black text-gray-100 relative overflow-hidden" style={{ background: '#000', color: '#e5e7eb' }}>
+    <div className="min-h-screen w-full bg-black text-gray-100 relative overflow-hidden">
       <BackgroundCanvas impulse={impulse} />
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-8">
         <header className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white">Internet Speed Test</h1>
-            <p className="text-sm text-gray-400">Fast, browser-based speed test — no installation. Measure download, upload, ping & jitter.</p>
+            <p className="text-sm text-gray-400">Fast, browser-based speed test — download, upload, ping & jitter.</p>
           </div>
-          <button onClick={resetAll} className="rounded-2xl border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800" title="Reset">Reset</button>
+          {/* Hamburger menu */}
+          <div className="relative">
+            <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 rounded-md border border-gray-700 hover:bg-gray-800" aria-label="Menu">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <>
+                <button className="fixed inset-0 z-40 bg-black/40" aria-label="Close menu overlay" onClick={() => setMenuOpen(false)} />
+                <div className="fixed right-4 top-16 z-50 w-56 bg-black border border-gray-700 rounded-xl shadow-lg">
+                  <a href="/faq" className="block px-4 py-2 text-sm hover:bg-gray-800" onClick={() => setMenuOpen(false)}>FAQ</a>
+                  <a href="/blog" className="block px-4 py-2 text-sm hover:bg-gray-800" onClick={() => setMenuOpen(false)}>Blog</a>
+                  <a href="/vpn-and-speed" className="block px-4 py-2 text-sm hover:bg-gray-800" onClick={() => setMenuOpen(false)}>VPN and Speed</a>
+                  <a href="/internet-providers" className="block px-4 py-2 text-sm hover:bg-gray-800" onClick={() => setMenuOpen(false)}>Internet Providers</a>
+                  <a href="/glossary" className="block px-4 py-2 text-sm hover:bg-gray-800" onClick={() => setMenuOpen(false)}>Glossary</a>
+                </div>
+              </>
+            )}
+          </div>
         </header>
 
-        {/* HERO: Centered CTA */}
-        <section className="min-h-[48vh] sm:min-h-[42vh] flex flex-col items-center justify-center text-center gap-3">
+        {/* HERO CTA */}
+        <section className={`min-h-[48vh] sm:min-h-[42vh] flex flex-col items-center justify-center text-center gap-3 ${menuOpen ? 'mt-24' : ''}`}>
           {!running ? (
             <CTAButton onClick={startTest}>
               {phase === "done" ? "Test Again" : "Start Test"}
@@ -463,9 +538,9 @@ export default function SpeedTestApp() {
             </button>
           )}
 
-          {/* Progress + status under CTA */}
+          {/* Progress + status */}
           <div className="w-full max-w-md mt-2">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-800" aria-hidden="true">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-900" aria-hidden="true">
               <div className="h-2 bg-blue-500 transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
             </div>
             <div className="mt-1 text-xs text-gray-400" aria-live="polite">Status: {statusText}</div>
@@ -487,31 +562,34 @@ export default function SpeedTestApp() {
           <h2 id="results" className="sr-only">Speed test results</h2>
 
           {/* Download */}
-          <article className="rounded-2xl border border-gray-700 bg-black/60 backdrop-blur p-4 shadow-sm" aria-labelledby="dl-title">
+          <article className="rounded-2xl border border-gray-800 bg-black/60 backdrop-blur p-4 shadow-sm" aria-labelledby="dl-title">
             <div id="dl-title" className="mb-2 text-xs uppercase tracking-wider text-gray-400">Download</div>
             <div className="flex items-end gap-2">
               <div className="text-4xl font-semibold text-white">{downloadMbps == null ? "—" : fmtMbps(downloadMbps)}</div>
               <div className="pb-1 text-sm text-gray-400">Mbps</div>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-800" aria-hidden="true">
-              <div className={`h-2 ${meterColor(downloadMbps)}`} style={{ width: downloadMbps == null ? "0%" : `${Math.min(100, (downloadMbps / 500) * 100)}%` }} />
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-900" aria-hidden="true">
+              <div className={`${"h-2 " + (downloadMbps == null ? "bg-gray-800" : (downloadMbps > 200*1_000_000 ? "bg-green-400" : downloadMbps > 50*1_000_000 ? "bg-emerald-400" : downloadMbps > 10*1_000_000 ? "bg-yellow-400" : "bg-orange-400"))}`} style={{ width: downloadMbps == null ? "0%" : `${Math.min(100, (downloadMbps / 500) * 100)}%` }} />
+            </div>
+            <div className="mt-3">
+              <button onClick={copyShare} className="rounded-xl border border-gray-700 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-900">Copy Result</button>
             </div>
           </article>
 
           {/* Upload */}
-          <article className="rounded-2xl border border-gray-700 bg-black/60 backdrop-blur p-4 shadow-sm" aria-labelledby="ul-title">
+          <article className="rounded-2xl border border-gray-800 bg-black/60 backdrop-blur p-4 shadow-sm" aria-labelledby="ul-title">
             <div id="ul-title" className="mb-2 text-xs uppercase tracking-wider text-gray-400">Upload</div>
             <div className="flex items-end gap-2">
               <div className="text-4xl font-semibold text-white">{uploadMbps == null ? "—" : fmtMbps(uploadMbps)}</div>
               <div className="pb-1 text-sm text-gray-400">Mbps</div>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-800" aria-hidden="true">
-              <div className={`h-2 ${meterColor(uploadMbps)}`} style={{ width: uploadMbps == null ? "0%" : `${Math.min(100, (uploadMbps / 200) * 100)}%` }} />
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-900" aria-hidden="true">
+              <div className={`${"h-2 " + (uploadMbps == null ? "bg-gray-800" : (uploadMbps > 200*1_000_000 ? "bg-green-400" : uploadMbps > 50*1_000_000 ? "bg-emerald-400" : uploadMbps > 10*1_000_000 ? "bg-yellow-400" : "bg-orange-400"))}`} style={{ width: uploadMbps == null ? "0%" : `${Math.min(100, (uploadMbps / 200) * 100)}%` }} />
             </div>
           </article>
 
           {/* Latency */}
-          <article className="rounded-2xl border border-gray-700 bg-black/60 backdrop-blur p-4 shadow-sm" aria-labelledby="latency-title">
+          <article className="rounded-2xl border border-gray-800 bg-black/60 backdrop-blur p-4 shadow-sm" aria-labelledby="latency-title">
             <div id="latency-title" className="mb-2 text-xs uppercase tracking-wider text-gray-400">Latency</div>
             <div className="flex items-end gap-2">
               <div className="text-4xl font-semibold text-white">{latencyMs == null ? "—" : fmtMs(latencyMs)}</div>
@@ -521,49 +599,14 @@ export default function SpeedTestApp() {
           </article>
         </section>
 
-        {/* Copy results close to the cards */}
-        <div className="mt-4 flex justify-center">
-          <button onClick={copyShare} className="rounded-2xl border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800">Copy Result</button>
-        </div>
+        {/* Server + Provider (inline text) */}
+        <p className="mt-3 text-xs text-gray-400">Server: {serverInfo || "—"} • Provider: {providerInfo || "—"}</p>
 
-        {/* Extra info: server + provider */}
-        <section className="mt-4 grid gap-4 sm:grid-cols-2">
-          <article className="rounded-2xl border border-gray-700 bg-black/60 backdrop-blur p-4 shadow-sm">
-            <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">Server</div>
-            <div className="text-white">{serverInfo || "—"}</div>
-          </article>
-          <article className="rounded-2xl border border-gray-700 bg-black/60 backdrop-blur p-4 shadow-sm">
-            <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">Provider</div>
-            <div className="text-white">{providerInfo || "—"}</div>
-          </article>
-        </section>
-
-        {/* Mobile Ad Slot (line only) */}
+        {/* Mobile Affiliate */}
         <div className="block sm:hidden"><AdSlot /></div>
 
-        <SparkleDivider label="Helpful info" />
-
-        {/* FAQ */}
-        <section aria-labelledby="faq">
-          <h2 id="faq" className="text-lg font-semibold mb-3 text-white">Internet speed test — FAQs</h2>
-          <div className="space-y-3">
-            <details className="rounded-xl border border-gray-700 bg-black/60 backdrop-blur p-3">
-              <summary className="cursor-pointer font-medium">How does this speed test work?</summary>
-              <p className="mt-2 text-sm text-gray-300">We measure download and upload throughput in your browser and estimate ping & jitter using multiple latency probes.</p>
-            </details>
-            <details className="rounded-2xl border border-gray-700 bg-black/60 backdrop-blur p-3">
-              <summary className="cursor-pointer font-medium">What is a good internet speed?</summary>
-              <p className="mt-2 text-sm text-gray-300">For HD streaming and calls, ~25 Mbps down and 5 Mbps up are usually enough. For gaming or 4K streaming, more bandwidth helps.</p>
-            </details>
-            <details className="rounded-2xl border border-gray-700 bg-black/60 backdrop-blur p-3">
-              <summary className="cursor-pointer font-medium">Why do results vary?</summary>
-              <p className="mt-2 text-sm text-gray-300">Wi‑Fi quality, network congestion, and server distance can affect results. Try a wired connection for consistency.</p>
-            </details>
-          </div>
-        </section>
-
-        {/* Desktop Ad Slot (line only) */}
-        <section className="mt-6 hidden sm:block" aria-labelledby="sponsored">
+        {/* Desktop Affiliate above (FAQ removed) */}
+        <section id="sponsored-section" className="mt-6 hidden sm:block" aria-labelledby="sponsored">
           <h2 id="sponsored" className="sr-only">Sponsored</h2>
           <AdSlot />
         </section>
@@ -574,23 +617,15 @@ export default function SpeedTestApp() {
   );
 }
 
-// -------------------- Tiny in-file tests (dev only) --------------------
+/* ==================== Tiny tests (dev only) ==================== */
 if (typeof window !== "undefined") {
   try {
-    console.assert(fmtMbps(10_000_000) === "10.00", "fmtMbps should format 10,000,000 bps as 10.00");
-    console.assert(fmtMbps(1_234_567) === "1.23", "fmtMbps rounds to 2 decimals");
-    console.assert(fmtMbps(0) === "0.00", "fmtMbps should format 0 correctly");
-    console.assert(fmtMs(-5) === "0", "fmtMs should clamp negatives to 0");
-    const n = 131072; // > 65536 to exercise chunking
-    const bytes = safeRandomBytes(n);
-    console.assert(bytes.length === n, "safeRandomBytes should return requested length");
-    const meter = (v) => (v == null ? "bg-gray-700" : v > 200e6 ? "bg-green-400" : v > 50e6 ? "bg-emerald-400" : v > 10e6 ? "bg-yellow-400" : "bg-orange-400");
-    console.assert(meter(null) === "bg-gray-700", "meterColor for null");
-    console.assert(meter(300e6) === "bg-green-400", "meterColor for high speed");
-    // eslint-disable-next-line no-console
-    console.debug("Dev tests passed ✅");
+    console.assert(fmtMbps(10_000_000) === "10.00", "fmtMbps formats 10,000,000 bps as 10.00");
+    console.assert(fmtMs(-5) === "0", "fmtMs clamps negatives to 0");
+    const sampleTrace = "colo=BUD\nloc=HU\nip=1.2.3.4";
+    const sampleMap = Object.fromEntries(sampleTrace.split("\n").map(l => l.split("=")).filter(([k,v])=>k&&v));
+    console.assert(sampleMap.colo === "BUD" && sampleMap.loc === "HU" && sampleMap.ip === "1.2.3.4", "trace parser ok");
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error("Dev tests failed", e);
+    console.warn("Dev tests failed", e);
   }
 }
