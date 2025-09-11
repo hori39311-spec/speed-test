@@ -3,7 +3,7 @@ import { Html, Head, Main, NextScript } from "next/document";
 
 export default function Document() {
   return (
-    <Html>
+    <Html lang="en">
       <Head>
         {/* Ide kell a Google AdSense meta tag */}
         <meta name="google-adsense-account" content="ca-pub-1778433750705975" />
