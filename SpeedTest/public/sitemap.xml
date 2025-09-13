@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.networkspeed.online</loc>
+    <loc>https://www.networkspeed.online/</loc>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.networkspeed.online/faq</loc>
+    <loc>https://www.networkspeed.online/faq/</loc>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.networkspeed.online/blog</loc>
+    <loc>https://www.networkspeed.online/blog/</loc>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.networkspeed.online/vpn-and-speed</loc>
+    <loc>https://www.networkspeed.online/vpn-and-speed/</loc>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.networkspeed.online/internet-providers</loc>
+    <loc>https://www.networkspeed.online/internet-providers/</loc>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.networkspeed.online/glossary</loc>
+    <loc>https://www.networkspeed.online/glossary/</loc>
     <priority>0.6</priority>
   </url>
 </urlset>
